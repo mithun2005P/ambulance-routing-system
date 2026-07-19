@@ -1,0 +1,38 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: sentinel-backend
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DB_PATH: /app/data/ambulance.db
+      CORS_ORIGIN: "*"
+    volumes:
+      - sentinel-db:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/health', r => process.exit(r.statusCode===200?0:1)).on('error', ()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:4000/api
+        VITE_SOCKET_URL: http://localhost:4000
+    container_name: sentinel-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  sentinel-db:
